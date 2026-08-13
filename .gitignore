@@ -1,0 +1,5 @@
+# --- Cualquier carpeta de base de datos local (DBstore u otro motor) ---
+DBstore/
+dbstore/
+db_store/
+*.dbstore
