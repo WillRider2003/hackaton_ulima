@@ -1,0 +1,6 @@
+escenario,cuenta_financiera,ciclo,ciclo_previo,nota
+a_prorrateo,716389015,20260417,,Sin ciclo previo en el dataset (logico: el prorrateo ocurre en el alta). Delta S/ 7.73 sustentado en BRAINY_PRORRATEO_ALTASV3.
+b_financiamiento,757869240,20260605,20260405,Cuota de financiamiento nueva (S/ 11.45) + ajuste de carga externa. 1 linea residual sin explicar (S/ 1.31) -> se deriva a asesor.
+c_reconexion,100032914,20260415,20260315,Cargo por reconexion S/ 4.58 sustentado en BRAINY_RECONEXIONESV3.
+d_fin_descuento,758420349,20260505,20260405,Descuento de fidelizacion (95% x 3 meses) termino -> delta S/ 66.41 sustentado en BRAINY_DESCUENTOS_CUOTAS.
+e_cambio_plan,100706563,20260415,20260315,Cambio de Plan Ilimitado S/69.9 a Plan Ahorro S/20.9, mas ajuste proporcional del descuento de campana.
