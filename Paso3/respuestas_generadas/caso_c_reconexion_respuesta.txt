@@ -1,0 +1,34 @@
+CASO C — RECONEXION
+Cuenta financiera: 100813870 | Ciclo actual: 20260417 | Ciclo anterior: 20260317
+
+--- JSON de entrada (Paso 2) ---
+{
+  "cuenta_financiera": "100813870",
+  "ciclo_actual": "20260417",
+  "ciclo_anterior": "20260317",
+  "total_ciclo_actual_soles": 0.0,
+  "total_ciclo_anterior_soles": 0.0,
+  "delta_soles": 0.0,
+  "comparacion_disponible": true,
+  "causa": {
+    "tipo": "RECONEXION",
+    "fuente": "BRAINY_RECONEXIONESV3.csv",
+    "evidencia": {
+      "fecha_corte": "27/03/2026 00:00:00",
+      "fecha_reconexion": "27/03/2026 00:00:00",
+      "monto": "4.58"
+    }
+  }
+}
+
+--- Salida de la capa de redacción ---
+
+respuesta_corta:
+"No hay variación en el total de tu recibo. Sí registramos un cobro por
+reconexión de S/ 4.58: tu línea se suspendió y se reactivó el mismo día,
+27 de marzo."
+
+respuesta_detalle:
+"El total del ciclo se mantuvo sin cambios. Dentro del detalle hay un
+cargo por reconexión de S/ 4.58, con fecha de corte y de reconexión el
+27/03/2026 (mismo día) — fuente: BRAINY_RECONEXIONESV3.csv."

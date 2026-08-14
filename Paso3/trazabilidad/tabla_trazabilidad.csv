@@ -1,0 +1,15 @@
+caso,dato_mencionado_en_respuesta,campo_json_origen,valor_en_json,coincide
+A,S/ 2.57 (delta),delta_soles,-2.57,SI
+A,04 al 05 de febrero,fecha_inicio_minima / fecha_fin_maxima,04/02/2026 - 05/02/2026,SI
+A,S/ 42.47 (total anterior),total_ciclo_anterior_soles,42.47,SI
+A,S/ 39.90 (total actual),total_ciclo_actual_soles,39.9,SI
+B,cuota 1 de 2,cuota_actual / duracion_promocion,1 / 2,SI
+B,S/ 29.90 (sin cambio),total_ciclo_actual_soles / total_ciclo_anterior_soles,29.9 / 29.9,SI
+C,S/ 4.58,monto,4.58,SI
+C,27 de marzo (fecha_corte),fecha_corte,27/03/2026,SI
+C,27 de marzo (fecha_reconexion),fecha_reconexion,27/03/2026,SI
+D,50% (porcentaje_promo),porcentaje_promo,50.00,SI
+D,31 de mayo,fecha_fin,2026-05-31,SI
+E,6 de enero,fecha_inicio,2026-01-06,SI
+E,S/ 82.90 (sin cambio),total_ciclo_actual_soles / total_ciclo_anterior_soles,82.9 / 82.9,SI
+E,motivo especifico del cambio,motivo,null,NO_MENCIONADO_CORRECTAMENTE

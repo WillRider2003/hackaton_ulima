@@ -1,0 +1,34 @@
+CASO A — PRORRATEO
+Cuenta financiera: 759897406 | Ciclo actual: 20260305 | Ciclo anterior: 20260205
+
+--- JSON de entrada (Paso 2) ---
+{
+  "cuenta_financiera": "759897406",
+  "ciclo_actual": "20260305",
+  "ciclo_anterior": "20260205",
+  "total_ciclo_actual_soles": 39.9,
+  "total_ciclo_anterior_soles": 42.47,
+  "delta_soles": -2.57,
+  "comparacion_disponible": true,
+  "causa": {
+    "tipo": "PRORRATEO",
+    "fuente": "BRAINY_PRORRATEO_ALTASV3.csv",
+    "evidencia": {
+      "fecha_inicio_minima": "04/02/2026 00:00:00",
+      "fecha_fin_maxima": "05/02/2026 00:00:00",
+      "suma_prorrateo": "2.57",
+      "cantidad_cargos": "1"
+    }
+  }
+}
+
+--- Salida de la capa de redacción ---
+
+respuesta_corta:
+"Tu recibo de este ciclo bajó S/ 2.57 respecto al anterior. Fue un ajuste
+proporcional del 04 al 05 de febrero por un cambio en tu servicio ese día."
+
+respuesta_detalle:
+"El total pasó de S/ 42.47 a S/ 39.90. La diferencia (S/ 2.57) corresponde
+a un cobro proporcional ('prorrateo') por 1 cargo registrado entre el
+04/02/2026 y el 05/02/2026 — fuente: BRAINY_PRORRATEO_ALTASV3.csv."

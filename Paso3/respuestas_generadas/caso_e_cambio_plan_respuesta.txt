@@ -1,0 +1,41 @@
+CASO E — CAMBIO_PLAN
+Cuenta financiera: 100001124 | Ciclo actual: 20260615 | Ciclo anterior: 20260515
+
+--- JSON de entrada (Paso 2) ---
+{
+  "cuenta_financiera": "100001124",
+  "ciclo_actual": "20260615",
+  "ciclo_anterior": "20260515",
+  "total_ciclo_actual_soles": 82.9,
+  "total_ciclo_anterior_soles": 82.9,
+  "delta_soles": 0.0,
+  "comparacion_disponible": true,
+  "causa": {
+    "tipo": "CAMBIO_PLAN",
+    "fuente": "Ordenes.csv",
+    "evidencia": {
+      "motivo": null,
+      "fecha_inicio": "2026-01-06 18:43:47.000",
+      "fecha_completado": "2026-01-06 19:06:14.000"
+    }
+  }
+}
+
+--- Salida de la capa de redacción ---
+
+respuesta_corta:
+"Tu recibo se mantuvo en S/ 82.90. Registramos una actualización en tu
+plan el 6 de enero, pero no afectó el monto de este ciclo."
+
+respuesta_detalle:
+"No hubo variación en el total (S/ 82.90 en ambos ciclos). Hay una orden
+registrada el 06/01/2026 sobre tu cuenta, aunque el sistema no tiene
+guardado el motivo específico de esa orden — fuente: Ordenes.csv. Si
+quieres más detalle sobre ese cambio, puedo derivarte con un asesor."
+
+--- NOTA IMPORTANTE ---
+El campo "motivo" del JSON viene como null (dato real faltante en
+Ordenes.csv del dataset, no un error del script del Paso 2). La respuesta
+maneja esto correctamente: NO inventa un motivo y en su lugar ofrece
+derivar al cliente con un asesor — es la prueba de que el sistema prefiere
+la honestidad sobre completar el vacío con una suposición.

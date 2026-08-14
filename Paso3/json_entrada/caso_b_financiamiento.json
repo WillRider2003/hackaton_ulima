@@ -1,0 +1,18 @@
+{
+  "cuenta_financiera": "103169665",
+  "ciclo_actual": "20260715",
+  "ciclo_anterior": "20260615",
+  "total_ciclo_actual_soles": 29.9,
+  "total_ciclo_anterior_soles": 29.9,
+  "delta_soles": 0.0,
+  "comparacion_disponible": true,
+  "causa": {
+    "tipo": "EQUIPO_FINANCIADO",
+    "fuente": "BRAINY_DESCUENTOS_CUOTAS.csv",
+    "evidencia": {
+      "cuota_actual": "1",
+      "duracion_promocion": "2",
+      "monto_descuento": "2.00"
+    }
+  }
+}

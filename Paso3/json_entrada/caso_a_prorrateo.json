@@ -1,0 +1,19 @@
+{
+  "cuenta_financiera": "759897406",
+  "ciclo_actual": "20260305",
+  "ciclo_anterior": "20260205",
+  "total_ciclo_actual_soles": 39.9,
+  "total_ciclo_anterior_soles": 42.47,
+  "delta_soles": -2.57,
+  "comparacion_disponible": true,
+  "causa": {
+    "tipo": "PRORRATEO",
+    "fuente": "BRAINY_PRORRATEO_ALTASV3.csv",
+    "evidencia": {
+      "fecha_inicio_minima": "04/02/2026 00:00:00",
+      "fecha_fin_maxima": "05/02/2026 00:00:00",
+      "suma_prorrateo": "2.57",
+      "cantidad_cargos": "1"
+    }
+  }
+}

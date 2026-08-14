@@ -1,0 +1,35 @@
+CASO D — FIN_DESCUENTO
+Cuenta financiera: 100222091 | Ciclo actual: 20260531 | Ciclo anterior: 20260430
+
+--- JSON de entrada (Paso 2) ---
+{
+  "cuenta_financiera": "100222091",
+  "ciclo_actual": "20260531",
+  "ciclo_anterior": "20260430",
+  "total_ciclo_actual_soles": 0.0,
+  "total_ciclo_anterior_soles": 0.0,
+  "delta_soles": 0.0,
+  "comparacion_disponible": true,
+  "causa": {
+    "tipo": "FIN_DESCUENTO",
+    "fuente": "BRAINY_DESCUENTOS_CUOTAS.csv",
+    "evidencia": {
+      "fecha_fin": "2026-05-31 00:00:00.000",
+      "porcentaje_promo": "50.00",
+      "descripcion": "Descuento al Plan"
+    }
+  }
+}
+
+--- Salida de la capa de redacción ---
+
+respuesta_corta:
+"Tu total no cambió este ciclo, pero es importante que sepas: el
+descuento de 50% de tu plan terminó el 31 de mayo. Es posible que tu
+próximo recibo suba."
+
+respuesta_detalle:
+"El total se mantuvo igual en este ciclo. Sin embargo, tu 'Descuento al
+Plan' de 50% venció el 31/05/2026 — fuente: BRAINY_DESCUENTOS_CUOTAS.csv.
+Como es un evento reciente, es probable que el próximo ciclo ya refleje
+la renta completa."

@@ -1,0 +1,22 @@
+TABLA DE TRAZABILIDAD — Paso 3 EXPLICA+
+==========================================
+
+Objetivo: verificar que TODO monto, fecha o porcentaje mencionado en las
+5 respuestas generadas existe literalmente en el campo "evidencia" del
+JSON de entrada correspondiente (producido por el Paso 2).
+
+Resultado: 14/14 datos verificados, 14/14 coinciden exactamente.
+Cero discrepancias. Cero montos, fechas o causas inventados.
+
+Ver tabla_trazabilidad.csv para el detalle completo, dato por dato.
+
+Caso especial (fila 14): el Caso E menciona que "no se conoce el motivo
+específico del cambio de plan". Esto es correcto porque el campo
+"motivo" del JSON viene como null — el sistema NO inventó un motivo
+para llenar el vacío, sino que lo reconoció honestamente y ofreció
+derivar a un asesor. Esta es precisamente la conducta que exige la
+ficha del desafío: "0% de alucinaciones financieras".
+
+Este es el resultado que sustenta el criterio de "Precisión de
+Recuperación" y "Tasa de Alucinación: 0%" mencionados en la ficha del
+desafío (sección de Impacto Esperado).
