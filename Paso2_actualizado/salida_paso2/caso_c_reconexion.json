@@ -1,0 +1,18 @@
+{
+  "cuenta_financiera": "100032914",
+  "ciclo_actual": "20260415",
+  "ciclo_anterior": "20260315",
+  "total_ciclo_actual_soles": 22.61,
+  "total_ciclo_anterior_soles": 46.26,
+  "delta_soles": -23.65,
+  "comparacion_disponible": true,
+  "causa": {
+    "tipo": "RECONEXION",
+    "fuente": "BRAINY_RECONEXIONESV3.csv",
+    "evidencia": {
+      "fecha_corte": "20/03/2026 00:00:00",
+      "fecha_reconexion": "10/04/2026 00:00:00",
+      "monto": "4.58"
+    }
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "cuenta_financiera": "716389015",
+  "ciclo_consultado": "20260417",
+  "comparacion_disponible": false,
+  "nota": "No se encontró un ciclo anterior comparable en la tabla maestra para esta cuenta+ciclo específico; se muestra la causa detectada directamente en las tablas fuente.",
+  "causa": {
+    "tipo": "PRORRATEO",
+    "fuente": "BRAINY_PRORRATEO_ALTASV3.csv",
+    "evidencia": {
+      "fecha_inicio_minima": "15/04/2026 00:00:00",
+      "fecha_fin_maxima": "17/04/2026 00:00:00",
+      "suma_prorrateo": "7.73",
+      "cantidad_cargos": "1"
+    }
+  }
+}
