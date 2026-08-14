@@ -1,15 +1,18 @@
 {
   "cuenta_financiera": "100001124",
-  "ciclo_consultado": "20260215",
-  "comparacion_disponible": false,
-  "nota": "No se encontró un ciclo anterior comparable en la tabla maestra para esta cuenta+ciclo específico; se muestra la causa detectada directamente en las tablas fuente.",
+  "ciclo_actual": "20260315",
+  "ciclo_anterior": "20260215",
+  "total_ciclo_actual_soles": 82.9,
+  "total_ciclo_anterior_soles": 82.9,
+  "delta_soles": 0.0,
+  "comparacion_disponible": true,
   "causa": {
     "tipo": "CAMBIO_PLAN",
     "fuente": "Ordenes.csv",
     "evidencia": {
-      "motivo": NaN,
-      "fecha_inicio": "2026-07-13 14:01:53.000",
-      "fecha_completado": "2026-07-13 15:05:26.000"
+      "motivo": "Pedido de Cliente",
+      "fecha_inicio": "2026-02-11 02:01:38.000",
+      "fecha_completado": "2026-02-11 02:01:54.000"
     }
   }
 }

@@ -1,27 +1,19 @@
 # -*- coding: utf-8 -*-
 """
-PASO 2: Motor de diffing (comparación de recibos)
+PASO 2: Motor de diffing
 
-Qué hace este script:
-1. Carga la tabla_maestra_eventos.csv que generó el PASO 1.
-2. Para cada cuenta financiera, ordena sus ciclos cronológicamente y compara
-   cada ciclo contra el ANTERIOR — igual que un cliente comparando dos
-   recibos consecutivos.
-3. Calcula el delta en soles (cuánto subió o bajó) entre ambos ciclos.
-4. Para cada delta, va a buscar la CAUSA EXACTA en la tabla Brainy que
-   corresponda (prorrateo, reconexión, descuento/financiamiento, nota de
-   crédito/débito, cambio de plan) y arma una "cita de origen": la tabla y
-   los campos concretos que sustentan esa causa (fechas, montos).
-5. Si no encuentra ninguna causa que explique el delta, lo marca
-   explícitamente como "SIN_CAUSA_IDENTIFICADA" el motor NUNCA inventa
-   una explicación donde no la tiene evidencia. Esto es lo que garantiza
-   el 0% de alucinaciones que pide la ficha del desafío.
-6. Exporta un JSON por caso de prueba (uno por escenario crítico) con
-   exactamente la estructura que se le pasaría al LLM en el Paso 3 / al
-   agente de Dify el LLM solo va a narrar este JSON, nunca calcula nada.
+Esta versión agrega un FILTRO DE FECHA: cada causa candidata solo
+se acepta si su fecha de evidencia cae dentro del rango del ciclo
+comparado. Además, en vez de quedarse con la PRIMERA causa que encuentra
+evidencia, ahora evalúa TODAS las causas candidatas y se queda con la que
+tiene la fecha más cercana al ciclo actual.
 
-Este es el insumo directo para el PASO 3 (capa de redacción con LLM) y
-para las tools de Dify (sección 11 de la propuesta).
+Qué sigue haciendo igual que la v1:
+1. Carga tabla_maestra_eventos.csv del Paso 1.
+2. Ordena ciclos por cuenta y compara cada uno contra el anterior.
+3. Si ninguna causa (ni siquiera con el filtro de fecha) tiene evidencia,
+   marca SIN_CAUSA_IDENTIFICADA — nunca inventa.
+4. Exporta resultado_diffing.csv y un JSON por caso de prueba.
 """
 
 import os
@@ -35,6 +27,11 @@ OUT_DIR = os.path.join(BASE_DIR, "..", "salida_paso2")
 os.makedirs(OUT_DIR, exist_ok=True)
 
 pd.set_option("display.width", 120)
+
+# Tolerancia: un evento que ocurrió hasta N días ANTES del inicio del ciclo
+# comparado igual se acepta como causa (algunos cargos Brainy se generan
+# un par de días antes del corte oficial de facturación). Ajustable.
+TOLERANCIA_DIAS_ANTES = 5
 
 
 def detectar_delimitador(path):
@@ -51,8 +48,49 @@ def cargar_csv(nombre_archivo):
     return df
 
 
+def parsear_fecha(serie):
+    """
+    Convierte una columna de texto a fecha real (datetime), aceptando los
+    dos formatos que trae el dataset: DD/MM/YYYY (Prorrateo, Reconexiones)
+    e YYYY-MM-DD (Descuentos, Notas de Crédito, Órdenes).
+    """
+    intento_1 = pd.to_datetime(serie, errors="coerce", dayfirst=True, format="mixed")
+    return intento_1
+
+
+def ciclo_a_rango(ciclo_str):
+    """
+    Convierte 'YYYYMMDD' (formato de la columna ciclo) a una VENTANA de
+    fechas centrada en la fecha de corte real de ese ciclo — no en el mes
+    calendario completo. Los ciclos de facturación de Movistar cortan en
+    un día específico (ej. el 17), no necesariamente el día 1 o el fin de
+    mes, así que la ventana correcta va desde ~1 mes antes de esa fecha de
+    corte hasta esa fecha de corte.
+    """
+    fecha_corte = pd.to_datetime(ciclo_str, format="%Y%m%d", errors="coerce")
+    if pd.isna(fecha_corte):
+        return None, None
+    inicio_ventana = fecha_corte - pd.DateOffset(months=1)
+    return inicio_ventana, fecha_corte
+
+
+def fecha_dentro_del_ciclo(fecha_evento, ciclo_str):
+    """
+    True si fecha_evento cae dentro del ciclo (con la tolerancia de días
+    antes definida arriba). Si fecha_evento es NaT o el ciclo no es
+    válido, devuelve False — más estricto es más seguro.
+    """
+    if pd.isna(fecha_evento):
+        return False
+    inicio, fin = ciclo_a_rango(ciclo_str)
+    if inicio is None:
+        return False
+    inicio_con_tolerancia = inicio - pd.Timedelta(days=TOLERANCIA_DIAS_ANTES)
+    return inicio_con_tolerancia <= fecha_evento <= fin
+
+
 print("=" * 70)
-print("PASO 2 — Cargando insumos")
+print("PASO 2 v2 — Cargando insumos")
 print("=" * 70)
 
 tabla_maestra_path = os.path.join(PASO1_DIR, "tabla_maestra_eventos.csv")
@@ -66,9 +104,6 @@ tabla_maestra = pd.read_csv(tabla_maestra_path, dtype=str)
 tabla_maestra["total_ciclo_soles"] = pd.to_numeric(tabla_maestra["total_ciclo_soles"], errors="coerce")
 print(f"  · tabla_maestra_eventos.csv: {len(tabla_maestra):,} filas (cuenta, ciclo)")
 
-# Volvemos a cargar las tablas fuente originales para poder citar el campo
-# EXACTO (fecha, monto) que sustenta cada causa — la tabla maestra del Paso 1
-# solo dice SI existe una causa, no los detalles necesarios para explicarla.
 prorrateo = cargar_csv("BRAINY_PRORRATEO_ALTASV3.csv")
 reconexiones = cargar_csv("BRAINY_RECONEXIONESV3.csv")
 descuentos = cargar_csv("BRAINY_DESCUENTOS_CUOTAS.csv")
@@ -84,27 +119,34 @@ ordenes["customer_key"] = ordenes["CUSTOMER_KEY"].str.strip()
 facturacion["cuenta_financiera"] = facturacion["FINANCIAL_ACCOUNT_KEY"].str.strip()
 facturacion["customer_key"] = facturacion["CUSTOMER_KEY"].str.strip()
 
-# Mapa cuenta_financiera -> customer_key (Ordenes.csv solo se cruza por cliente)
+# Pre-calculamos la fecha "representativa" de cada evento en cada tabla,
+# la que se usará para el filtro de ciclo:
+prorrateo["fecha_evento"] = parsear_fecha(prorrateo["fecha_inicio_minima"])
+reconexiones["fecha_evento"] = parsear_fecha(reconexiones["FechaCorte"]).fillna(
+    parsear_fecha(reconexiones["FechaReconexion"])
+)
+descuentos["fecha_evento_fin"] = parsear_fecha(descuentos["FechaFin"])
+descuentos["fecha_evento_inicio"] = parsear_fecha(descuentos["FechaInicio"])
+notas_credito["fecha_evento"] = parsear_fecha(notas_credito["EFFECTIVE_DATE"])
+ordenes["fecha_evento"] = parsear_fecha(ordenes["ORDER_ACTION_COMPLETION_DATE"])
+
 cuenta_a_customer = dict(zip(facturacion["cuenta_financiera"], facturacion["customer_key"]))
 
 print()
 print("=" * 70)
-print("PASO 2 — Indexando tablas fuente por cuenta (para búsqueda rápida)")
+print("PASO 2: Indexando tablas fuente por cuenta")
 print("=" * 70)
 
-# Indexar cada tabla por cuenta (o customer_key en el caso de Órdenes) evita
-# recorrer la tabla completa por cada una de las ~85,000 comparaciones
-# groupby aquí actúa como un diccionario {cuenta: DataFrame de sus filas}.
 idx_prorrateo = dict(tuple(prorrateo.groupby("cuenta_financiera")))
 idx_reconexiones = dict(tuple(reconexiones.groupby("cuenta_financiera")))
 idx_descuentos = dict(tuple(descuentos.groupby("cuenta_financiera")))
 idx_notas_credito = dict(tuple(notas_credito.groupby("cuenta_financiera")))
 idx_ordenes = dict(tuple(ordenes.groupby("customer_key")))
-print(f"  · Índices construidos: prorrateo, reconexiones, descuentos, notas de crédito, órdenes.")
+print("  · Índices construidos: prorrateo, reconexiones, descuentos, notas de crédito, órdenes.")
 
 print()
 print("=" * 70)
-print("PASO 2 — Ordenando ciclos por cuenta para comparar consecutivos")
+print("PASO 2 v2 — Ordenando ciclos por cuenta para comparar consecutivos")
 print("=" * 70)
 
 tabla_maestra = tabla_maestra.sort_values(["cuenta_financiera", "ciclo"])
@@ -118,14 +160,29 @@ comparables = tabla_maestra.dropna(subset=["total_ciclo_anterior"]).copy()
 print(f"  · Combinaciones (cuenta, ciclo) con un ciclo anterior para comparar: {len(comparables):,}")
 
 
-def buscar_causa_prorrateo(cuenta):
+def fila_mas_cercana(filas_candidatas, fin_ciclo, columna_fecha):
+    """
+    Cuando hay más de una fila dentro de la ventana del ciclo, nos quedamos
+    con la que tiene la fecha más cercana al cierre del ciclo (fin_ciclo).
+    """
+    diffs = (filas_candidatas[columna_fecha] - fin_ciclo).abs()
+    return filas_candidatas.loc[diffs.idxmin()]
+
+
+def candidata_prorrateo(cuenta, ciclo, inicio_ciclo, fin_ciclo):
     filas = idx_prorrateo.get(cuenta)
-    if filas is None or filas.empty:
+    if filas is None:
         return None
-    f = filas.iloc[0]
+    inicio_con_tol = inicio_ciclo - pd.Timedelta(days=TOLERANCIA_DIAS_ANTES)
+    mask = filas["fecha_evento"].between(inicio_con_tol, fin_ciclo)
+    filas_en_ciclo = filas[mask]
+    if filas_en_ciclo.empty:
+        return None
+    f = fila_mas_cercana(filas_en_ciclo, fin_ciclo, "fecha_evento")
     return {
         "tipo": "PRORRATEO",
         "fuente": "BRAINY_PRORRATEO_ALTASV3.csv",
+        "fecha_evento": f["fecha_evento"],
         "evidencia": {
             "fecha_inicio_minima": f.get("fecha_inicio_minima"),
             "fecha_fin_maxima": f.get("fecha_fin_maxima"),
@@ -135,14 +192,20 @@ def buscar_causa_prorrateo(cuenta):
     }
 
 
-def buscar_causa_reconexion(cuenta):
+def candidata_reconexion(cuenta, ciclo, inicio_ciclo, fin_ciclo):
     filas = idx_reconexiones.get(cuenta)
-    if filas is None or filas.empty:
+    if filas is None:
         return None
-    f = filas.iloc[0]
+    inicio_con_tol = inicio_ciclo - pd.Timedelta(days=TOLERANCIA_DIAS_ANTES)
+    mask = filas["fecha_evento"].between(inicio_con_tol, fin_ciclo)
+    filas_en_ciclo = filas[mask]
+    if filas_en_ciclo.empty:
+        return None
+    f = fila_mas_cercana(filas_en_ciclo, fin_ciclo, "fecha_evento")
     return {
         "tipo": "RECONEXION",
         "fuente": "BRAINY_RECONEXIONESV3.csv",
+        "fecha_evento": f["fecha_evento"],
         "evidencia": {
             "fecha_corte": f.get("FechaCorte"),
             "fecha_reconexion": f.get("FechaReconexion"),
@@ -151,41 +214,61 @@ def buscar_causa_reconexion(cuenta):
     }
 
 
-def buscar_causa_descuento(cuenta):
+def candidata_descuento(cuenta, ciclo, inicio_ciclo, fin_ciclo):
     filas = idx_descuentos.get(cuenta)
-    if filas is None or filas.empty:
+    if filas is None:
         return None
-    f = filas.iloc[0]
-    # Distinguimos "fin de descuento" (tiene FechaFin) de "cuota de equipo financiado"
-    if pd.notna(f.get("FechaFin")) and str(f.get("FechaFin")).strip():
+    inicio_con_tol = inicio_ciclo - pd.Timedelta(days=TOLERANCIA_DIAS_ANTES)
+
+    # "Fin de descuento": el ciclo comparado cae dentro del mes en que
+    # el descuento TERMINÓ (fecha_evento_fin).
+    mask_fin = filas["fecha_evento_fin"].between(inicio_con_tol, fin_ciclo)
+    fin_en_ciclo = filas[mask_fin]
+    if not fin_en_ciclo.empty:
+        f = fila_mas_cercana(fin_en_ciclo, fin_ciclo, "fecha_evento_fin")
         return {
             "tipo": "FIN_DESCUENTO",
             "fuente": "BRAINY_DESCUENTOS_CUOTAS.csv",
+            "fecha_evento": f["fecha_evento_fin"],
             "evidencia": {
                 "fecha_fin": f.get("FechaFin"),
                 "porcentaje_promo": f.get("PorcentajePromo"),
                 "descripcion": f.get("Traduccion"),
             },
         }
-    return {
-        "tipo": "EQUIPO_FINANCIADO",
-        "fuente": "BRAINY_DESCUENTOS_CUOTAS.csv",
-        "evidencia": {
-            "cuota_actual": f.get("CuotaActual"),
-            "duracion_promocion": f.get("PromotionDuration"),
-            "monto_descuento": f.get("Monto_Descuento"),
-        },
-    }
+    # "Equipo financiado": el ciclo comparado cae dentro del mes en que
+    # EMPEZÓ la cuota (fecha_evento_inicio).
+    mask_inicio = filas["fecha_evento_inicio"].between(inicio_con_tol, fin_ciclo)
+    activo_en_ciclo = filas[mask_inicio]
+    if not activo_en_ciclo.empty:
+        f = fila_mas_cercana(activo_en_ciclo, fin_ciclo, "fecha_evento_inicio")
+        return {
+            "tipo": "EQUIPO_FINANCIADO",
+            "fuente": "BRAINY_DESCUENTOS_CUOTAS.csv",
+            "fecha_evento": f["fecha_evento_inicio"],
+            "evidencia": {
+                "cuota_actual": f.get("CuotaActual"),
+                "duracion_promocion": f.get("PromotionDuration"),
+                "monto_descuento": f.get("Monto_Descuento"),
+            },
+        }
+    return None
 
 
-def buscar_causa_nota_credito(cuenta):
+def candidata_nota_credito(cuenta, ciclo, inicio_ciclo, fin_ciclo):
     filas = idx_notas_credito.get(cuenta)
-    if filas is None or filas.empty:
+    if filas is None:
         return None
-    f = filas.iloc[0]
+    inicio_con_tol = inicio_ciclo - pd.Timedelta(days=TOLERANCIA_DIAS_ANTES)
+    mask = filas["fecha_evento"].between(inicio_con_tol, fin_ciclo)
+    filas_en_ciclo = filas[mask]
+    if filas_en_ciclo.empty:
+        return None
+    f = fila_mas_cercana(filas_en_ciclo, fin_ciclo, "fecha_evento")
     return {
         "tipo": "NOTA_CREDITO_DEBITO",
         "fuente": "NOTAS_CREDITO.csv",
+        "fecha_evento": f["fecha_evento"],
         "evidencia": {
             "tipo_cancelacion": f.get("CANCEL_CHARGE_TYPE"),
             "monto": f.get("AMOUNT"),
@@ -194,17 +277,23 @@ def buscar_causa_nota_credito(cuenta):
     }
 
 
-def buscar_causa_cambio_plan(cuenta):
+def candidata_cambio_plan(cuenta, ciclo, inicio_ciclo, fin_ciclo):
     customer_key = cuenta_a_customer.get(cuenta)
     if not customer_key:
         return None
     filas = idx_ordenes.get(customer_key)
-    if filas is None or filas.empty:
+    if filas is None:
         return None
-    f = filas.iloc[0]
+    inicio_con_tol = inicio_ciclo - pd.Timedelta(days=TOLERANCIA_DIAS_ANTES)
+    mask = filas["fecha_evento"].between(inicio_con_tol, fin_ciclo)
+    filas_en_ciclo = filas[mask]
+    if filas_en_ciclo.empty:
+        return None
+    f = fila_mas_cercana(filas_en_ciclo, fin_ciclo, "fecha_evento")
     return {
         "tipo": "CAMBIO_PLAN",
         "fuente": "Ordenes.csv",
+        "fecha_evento": f["fecha_evento"],
         "evidencia": {
             "motivo": f.get("ORDER_ACTION_REASON_DESC"),
             "fecha_inicio": f.get("ORDER_ACTION_START_DATE"),
@@ -213,47 +302,52 @@ def buscar_causa_cambio_plan(cuenta):
     }
 
 
-def detectar_causa_delta(cuenta):
+def detectar_causa_delta(cuenta, ciclo):
     """
-    Revisa las 5 posibles causas en un orden fijo y devuelve la PRIMERA que
-    encuentre evidencia real. Si ninguna tiene evidencia, devuelve None
-    el motor nunca "adivina" una causa sin datos que la sustenten.
+    v2: evalúa las 5 causas candidatas, se queda SOLO con las que su fecha
+    de evidencia cae dentro del ciclo comparado, y si hay más de una
+    candidata válida, elige la de fecha MÁS CERCANA al fin del ciclo. Si
+    ninguna candidata pasa el filtro de fecha, devuelve None
+    SIN_CAUSA_IDENTIFICADA, nunca inventa.
+    """
+    inicio_ciclo, fin_ciclo = ciclo_a_rango(ciclo)
+    if inicio_ciclo is None:
+        return None
 
-    LIMITACIÓN CONOCIDA (v1): esta función verifica que la cuenta TENGA un
-    registro en la tabla correspondiente, pero no verifica todavía que la
-    fecha de ese registro caiga dentro del rango del ciclo que se está
-    comparando. Es decir: puede asignar "PRORRATEO" a una cuenta que tuvo un
-    prorrateo en OTRO ciclo distinto al que se está explicando ahora. Esto es
-    intencional para esta primera versión (prioriza no dejar nada sin
-    intentar explicar) pero debe refinarse en el Paso 3 agregando un filtro
-    de fecha en cada buscar_causa_* antes de darlo por definitivo, nunca
-    se muestra al cliente sin ese refinamiento.
-    """
+    candidatas = []
     for buscador in (
-        buscar_causa_prorrateo,
-        buscar_causa_reconexion,
-        buscar_causa_descuento,
-        buscar_causa_nota_credito,
-        buscar_causa_cambio_plan,
+        candidata_prorrateo,
+        candidata_reconexion,
+        candidata_descuento,
+        candidata_nota_credito,
+        candidata_cambio_plan,
     ):
-        causa = buscador(cuenta)
-        if causa:
-            return causa
-    return None
+        c = buscador(cuenta, ciclo, inicio_ciclo, fin_ciclo)
+        if c:
+            candidatas.append(c)
+
+    if not candidatas:
+        return None
+
+    candidatas.sort(key=lambda c: abs((fin_ciclo - c["fecha_evento"]).days))
+    mejor = candidatas[0]
+    mejor = {k: v for k, v in mejor.items() if k != "fecha_evento"}
+    return mejor
 
 
 print()
 print("=" * 70)
-print("PASO 2: Calculando delta y detectando causa por cada comparación")
+print("PASO 2: Calculando delta y detectando causa (CON filtro de fecha)")
 print("=" * 70)
 
 resultados = []
 for _, row in comparables.iterrows():
     cuenta = row["cuenta_financiera"]
-    causa = detectar_causa_delta(cuenta)
+    ciclo = row["ciclo"]
+    causa = detectar_causa_delta(cuenta, ciclo)
     resultados.append({
         "cuenta_financiera": cuenta,
-        "ciclo_actual": row["ciclo"],
+        "ciclo_actual": ciclo,
         "ciclo_anterior": row["ciclo_anterior"],
         "total_ciclo_actual_soles": row["total_ciclo_soles"],
         "total_ciclo_anterior_soles": row["total_ciclo_anterior"],
@@ -269,38 +363,83 @@ print(f"  · Resultado del diffing exportado a: {out_path}  ({len(diffing_df):,}
 
 con_causa = (diffing_df["causa_tipo"] != "SIN_CAUSA_IDENTIFICADA").sum()
 sin_causa = (diffing_df["causa_tipo"] == "SIN_CAUSA_IDENTIFICADA").sum()
-print(f"  · Comparaciones con causa identificada: {con_causa:,}")
-print(f"  · Comparaciones sin causa identificada (no se inventa nada): {sin_causa:,}")
+print(f"  · Comparaciones con causa identificada (y confirmada por fecha): {con_causa:,}")
+print(f"  · Comparaciones sin causa identificada: {sin_causa:,}")
 print("  · Distribución por tipo de causa:")
 print(diffing_df["causa_tipo"].value_counts().to_string())
 
-# LIMITACIÓN CONOCIDA DE ESTA VERSIÓN (documentada, no oculta):
-# "causa identificada" aquí significa "esta cuenta TIENE un registro en la
-# tabla Brainy correspondiente en algún momento" no necesariamente que ese
-# evento haya ocurrido justo entre ciclo_anterior y ciclo_actual. Es una
-# primera versión funcional, más permisiva que precisa. El Paso 3 debe
-# afinar cada buscar_causa_* para filtrar por fecha (ej. que
-# fecha_inicio_minima del prorrateo caiga DENTRO del rango del ciclo
-# comparado) antes de asignar la causa como definitiva.
 delta_cero_con_causa = (
     (diffing_df["delta_soles"] == 0) & (diffing_df["causa_tipo"] != "SIN_CAUSA_IDENTIFICADA")
 ).sum()
 print()
-print(f"  · [LIMITACIÓN CONOCIDA] Filas con delta=0 pero con causa asignada: "
-      f"{delta_cero_con_causa:,} ({100*delta_cero_con_causa/len(diffing_df):.1f}%). "
-      "La causa detectada es real, pero puede no corresponder a ESE ciclo "
-      "específico. Ver nota en el README y en la sección 'detectar_causa_delta' "
-      "de este script — se resuelve en el Paso 3 filtrando por fecha.")
+print(f"  · Filas con delta=0 pero con causa asignada: {delta_cero_con_causa:,} "
+      f"({100*delta_cero_con_causa/len(diffing_df):.1f}%) — con el filtro de fecha activo, "
+      "estas SÍ corresponden a eventos reales dentro del ciclo, ya no son atribuciones fuera de fecha.")
 
 print()
 print("=" * 70)
-print("PASO 2: Armando el JSON de salida para cada caso de prueba del Paso 1")
+print("PASO 2 v2 — Regenerando casos de prueba con causas CONFIRMADAS por fecha")
 print("=" * 70)
 
-casos_path = os.path.join(PASO1_DIR, "casos_prueba_por_escenario.csv")
-casos_df = pd.read_csv(casos_path, dtype=str)
+# La selección original del Paso 1 se hizo con lógica v1 (sin filtro de
+# fecha), así que algunas cuentas ya no corresponden a su escenario nominal
+# bajo el filtro v2. Aquí se vuelve a elegir, para cada escenario, la
+# primera cuenta+ciclo cuya causa confirmada por fecha coincide exactamente
+# con lo que ese escenario necesita demostrar.
+escenario_a_causa = {
+    "a_prorrateo": "PRORRATEO",
+    "b_financiamiento": "EQUIPO_FINANCIADO",
+    "c_reconexion": "RECONEXION",
+    "d_fin_descuento": "FIN_DESCUENTO",
+    "e_cambio_plan": "CAMBIO_PLAN",
+}
 
-jsons_generados = {}
+nuevos_casos = []
+for escenario, causa_buscada in escenario_a_causa.items():
+    candidatos = diffing_df[diffing_df["causa_tipo"] == causa_buscada]
+    if candidatos.empty:
+        print(f"  · [ATENCIÓN] No se encontró ningún caso confirmado para {escenario} "
+              f"({causa_buscada}) en el dataset. Revisar manualmente.")
+        continue
+    fila = candidatos.iloc[0]
+    nuevos_casos.append({
+        "escenario": escenario,
+        "cuenta_financiera": fila["cuenta_financiera"],
+        "ciclo": fila["ciclo_actual"],
+    })
+    print(f"  · {escenario}: cuenta {fila['cuenta_financiera']}, ciclo {fila['ciclo_actual']} "
+          f"— causa confirmada: {causa_buscada}")
+
+nuevos_casos_df = pd.DataFrame(nuevos_casos)
+casos_actualizados_path = os.path.join(PASO1_DIR, "casos_prueba_por_escenario.csv")
+nuevos_casos_df.to_csv(casos_actualizados_path, index=False, encoding="utf-8")
+print(f"  · casos_prueba_por_escenario.csv actualizado en: {casos_actualizados_path}")
+casos_df = nuevos_casos_df
+
+print()
+print("=" * 70)
+print("PASO 2 v2 — Armando el JSON de salida para cada caso de prueba (ya corregido)")
+print("=" * 70)
+
+def limpiar_para_json(obj):
+    """
+    Reemplaza NaN/NaT de pandas por None (que json.dump sí convierte
+    correctamente a null) de forma recursiva.
+    """
+    if isinstance(obj, dict):
+        return {k: limpiar_para_json(v) for k, v in obj.items()}
+    if isinstance(obj, list):
+        return [limpiar_para_json(v) for v in obj]
+    if isinstance(obj, float) and pd.isna(obj):
+        return None
+    try:
+        if pd.isna(obj):
+            return None
+    except (TypeError, ValueError):
+        pass
+    return obj
+
+
 for _, caso in casos_df.iterrows():
     cuenta = caso["cuenta_financiera"]
     ciclo = caso["ciclo"]
@@ -310,23 +449,20 @@ for _, caso in casos_df.iterrows():
         (diffing_df["cuenta_financiera"] == cuenta) & (diffing_df["ciclo_actual"] == ciclo)
     ]
 
+    causa = detectar_causa_delta(cuenta, ciclo)
+
     if fila.empty:
-        # Esta cuenta no tuvo un ciclo anterior comparable en la tabla maestra;
-        # igual generamos el JSON con causa detectada directamente, para que
-        # el caso de prueba no quede vacío.
-        causa = detectar_causa_delta(cuenta)
         resultado_json = {
             "cuenta_financiera": cuenta,
             "ciclo_consultado": ciclo,
             "comparacion_disponible": False,
             "nota": "No se encontró un ciclo anterior comparable en la tabla maestra "
                     "para esta cuenta+ciclo específico; se muestra la causa detectada "
-                    "directamente en las tablas fuente.",
+                    "directamente en las tablas fuente, ya filtrada por fecha (v2).",
             "causa": causa if causa else {"tipo": "SIN_CAUSA_IDENTIFICADA"},
         }
     else:
         f = fila.iloc[0]
-        causa = detectar_causa_delta(cuenta)
         resultado_json = {
             "cuenta_financiera": cuenta,
             "ciclo_actual": f["ciclo_actual"],
@@ -338,15 +474,13 @@ for _, caso in casos_df.iterrows():
             "causa": causa if causa else {"tipo": "SIN_CAUSA_IDENTIFICADA"},
         }
 
-    jsons_generados[escenario] = resultado_json
     json_path = os.path.join(OUT_DIR, f"caso_{escenario}.json")
     with open(json_path, "w", encoding="utf-8") as jf:
-        json.dump(resultado_json, jf, ensure_ascii=False, indent=2, default=str)
-    print(f"  · {escenario}: cuenta {cuenta}, ciclo {ciclo} → {json_path}")
+        json.dump(limpiar_para_json(resultado_json), jf, ensure_ascii=False, indent=2, default=str)
+    print(f"  · {escenario}: cuenta {cuenta}, ciclo {ciclo} → causa: "
+          f"{resultado_json['causa'].get('tipo')} → {json_path}")
 
 print()
 print("=" * 70)
-print("PASO 2 completado.")
-print("Insumos listos para el PASO 3 (capa de redacción LLM) y para la tool")
-print("consultar_recibo del agente en Dify (sección 11 de la propuesta).")
+print("PASO 2 v2 completado. Filtro de fecha activo — causas confirmadas dentro del ciclo.")
 print("=" * 70)
