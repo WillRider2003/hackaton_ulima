@@ -1,0 +1,18 @@
+{
+  "cuenta_financiera": "100222091",
+  "ciclo_actual": "20260531",
+  "ciclo_anterior": "20260430",
+  "total_ciclo_actual_soles": 0.0,
+  "total_ciclo_anterior_soles": 0.0,
+  "delta_soles": 0.0,
+  "comparacion_disponible": true,
+  "causa": {
+    "tipo": "FIN_DESCUENTO",
+    "fuente": "BRAINY_DESCUENTOS_CUOTAS.csv",
+    "evidencia": {
+      "fecha_fin": "2026-05-31 00:00:00.000",
+      "porcentaje_promo": "50.00",
+      "descripcion": "Descuento al Plan"
+    }
+  }
+}
