@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Llamada con Confi | CONFIA+</title>
+<meta name="description" content="Simula una llamada de voz real con Confi, el asistente de facturación de Movistar.">
+<style>
+  :root{
+    --azul:#019DF4; --azul-oscuro:#0B4F8A; --morado:#6C3CE9; --verde:#4FD1A5; --rojo:#F0554D;
+    --bg:#080D18; --surface:#121A2B; --border:#232E42;
+    --text:#EDF1F7; --text-2:#A6B1C4; --text-3:#6E7A8F;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
+    background: radial-gradient(900px 600px at 20% -10%, rgba(1,157,244,.18), transparent),
+                radial-gradient(900px 600px at 100% 10%, rgba(108,60,233,.18), transparent),
+                var(--bg);
+    color:var(--text); min-height:100vh; display:flex; flex-direction:column;
+  }
+  a{color:inherit; text-decoration:none;}
+  .icon{width:18px; height:18px; stroke-width:2; flex-shrink:0;}
+
+  .topbar{display:flex; align-items:center; justify-content:space-between; padding:20px 28px;}
+  .back{display:inline-flex; align-items:center; gap:8px; font-size:13.5px; font-weight:600; color:var(--text-2); padding:8px 14px; border-radius:999px; border:1px solid var(--border); transition: all .2s ease;}
+  .back:hover{color:var(--text); border-color:var(--azul);}
+  .brand{display:flex; align-items:center; gap:8px; font-weight:800; font-size:15px; letter-spacing:-.3px;}
+  .brand .dot{width:8px; height:8px; border-radius:50%; background:linear-gradient(135deg,var(--azul),var(--morado));}
+
+  main{flex:1; display:flex; align-items:center; justify-content:center; padding:24px;}
+  .call-card{
+    width:100%; max-width:420px; background:var(--surface); border:1px solid var(--border);
+    border-radius:28px; padding:40px 30px 32px; text-align:center; box-shadow:0 30px 70px -30px rgba(0,0,0,.6);
+  }
+
+  .avatar-wrap{position:relative; width:132px; height:132px; margin:0 auto 22px;}
+  .avatar{
+    width:132px; height:132px; border-radius:50%; display:flex; align-items:center; justify-content:center;
+    background:linear-gradient(135deg,var(--azul),var(--morado)); font-size:46px; font-weight:800; color:#fff;
+    position:relative; z-index:2;
+  }
+  .ring{position:absolute; inset:0; border-radius:50%; border:2px solid var(--azul); opacity:0; z-index:1;}
+  .state-ringing .ring, .state-connected .ring{animation: ringpulse 1.6s ease-out infinite;}
+  @keyframes ringpulse{
+    0%{ transform:scale(1); opacity:.55; }
+    100%{ transform:scale(1.55); opacity:0; }
+  }
+
+  h1{font-size:19px; font-weight:800; margin-bottom:4px;}
+  .subtitle{font-size:13.5px; color:var(--text-3); margin-bottom:22px;}
+
+  .status-pill{
+    display:inline-flex; align-items:center; gap:8px; font-size:12.5px; font-weight:700;
+    padding:7px 15px; border-radius:999px; background:rgba(255,255,255,.06); color:var(--text-2);
+    margin-bottom:22px; border:1px solid var(--border);
+  }
+  .status-dot{width:7px; height:7px; border-radius:50%; background:var(--text-3);}
+  .status-pill.live .status-dot{background:var(--verde); box-shadow:0 0 0 3px rgba(79,209,165,.2);}
+  .status-pill.thinking .status-dot{background:#F5B93B; animation: blink 1s infinite;}
+  .status-pill.speaking .status-dot{background:var(--azul); animation: blink 1s infinite;}
+  .status-pill.listening .status-dot{background:var(--rojo); animation: blink .8s infinite;}
+  @keyframes blink{ 0%,100%{opacity:1;} 50%{opacity:.25;} }
+
+  .timer{font-size:13px; color:var(--text-3); margin-bottom:18px; font-variant-numeric: tabular-nums;}
+
+  .transcript{
+    text-align:left; max-height:220px; overflow-y:auto; display:flex; flex-direction:column; gap:10px;
+    margin-bottom:26px; padding-right:4px;
+  }
+  .transcript:empty{display:none;}
+  .line{max-width:88%; padding:9px 13px; border-radius:13px; font-size:13.5px; line-height:1.4;}
+  .line.bot{background:rgba(255,255,255,.06); border:1px solid var(--border); align-self:flex-start; border-bottom-left-radius:4px;}
+  .line.user{background:linear-gradient(135deg,var(--azul),var(--morado)); color:#fff; align-self:flex-end; border-bottom-right-radius:4px;}
+  .line.system{align-self:center; color:var(--text-3); font-size:12px; background:none; border:none; text-align:center;}
+
+  .controls{display:flex; align-items:center; justify-content:center; gap:18px;}
+  .ctrl-btn{
+    width:58px; height:58px; border-radius:50%; border:none; cursor:pointer;
+    display:flex; align-items:center; justify-content:center; transition: transform .18s ease, box-shadow .18s ease;
+  }
+  .ctrl-btn:hover{transform: translateY(-2px);}
+  .ctrl-btn:active{transform: translateY(0);}
+  .ctrl-btn .icon{width:23px; height:23px;}
+  .ctrl-start{
+    background:linear-gradient(135deg,var(--verde),#28B487); color:#fff; width:auto; height:auto;
+    padding:15px 30px; border-radius:999px; font-weight:800; font-size:14.5px; gap:10px; display:inline-flex; align-items:center;
+    box-shadow:0 14px 30px -10px rgba(79,209,165,.5);
+  }
+  .ctrl-mic{background:rgba(255,255,255,.08); color:var(--text); border:1px solid var(--border);}
+  .ctrl-mic.on{background:color-mix(in srgb, var(--rojo) 20%, transparent); color:var(--rojo); border-color:var(--rojo);}
+  .ctrl-hangup{background:var(--rojo); color:#fff; box-shadow:0 14px 26px -10px rgba(240,85,77,.55);}
+
+  .hint{font-size:12px; color:var(--text-3); margin-top:18px; line-height:1.5;}
+  .warn{
+    margin-top:18px; padding:12px 14px; border-radius:12px; background:rgba(240,85,77,.1);
+    border:1px solid rgba(240,85,77,.3); color:#FF9A94; font-size:12.5px; text-align:left; display:none;
+  }
+  .warn.show{display:block;}
+
+  .screen{display:none;}
+  .screen.active{display:block;}
+
+  @media (max-width:480px){
+    .call-card{padding:30px 20px 26px; border-radius:20px;}
+  }
+</style>
+</head>
+<body>
+
+  <div class="topbar">
+    <a href="index.html" class="back">
+      <svg class="icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+      Volver
+    </a>
+    <div class="brand"><span class="dot"></span>CONFIA+</div>
+    <span style="width:70px"></span>
+  </div>
+
+  <main>
+    <div class="call-card" id="callCard">
+
+      <div class="avatar-wrap" id="avatarWrap">
+        <div class="ring"></div>
+        <div class="avatar">C</div>
+      </div>
+
+      <!-- Pantalla: inicio -->
+      <div class="screen active" id="screenIdle">
+        <h1>Llamar a Confi</h1>
+        <p class="subtitle">Simulación de llamada real por voz, conectada al asistente de CONFIA+</p>
+        <div class="controls">
+          <button class="ctrl-btn ctrl-start" id="btnStart">
+            <svg class="icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+            Iniciar llamada
+          </button>
+        </div>
+        <p class="hint">Usa Google Chrome en computadora para mejores resultados. Tu navegador te pedirá permiso para usar el micrófono.</p>
+        <div class="warn" id="warnUnsupported">
+          Tu navegador no soporta reconocimiento de voz (Web Speech API). Prueba con Google Chrome en una laptop o PC de escritorio.
+        </div>
+      </div>
+
+      <!-- Pantalla: llamando -->
+      <div class="screen" id="screenRinging">
+        <h1>Llamando a Confi…</h1>
+        <p class="subtitle">Conectando con el asistente de CONFIA+</p>
+      </div>
+
+      <!-- Pantalla: en llamada -->
+      <div class="screen" id="screenConnected">
+        <h1>Confi</h1>
+        <div class="status-pill" id="statusPill"><span class="status-dot"></span><span id="statusText">Conectado</span></div>
+        <div class="timer" id="timer">00:00</div>
+        <div class="transcript" id="transcript"></div>
+        <div class="controls">
+          <button class="ctrl-btn ctrl-mic" id="btnMic" title="Hablar de nuevo">
+            <svg class="icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+          </button>
+          <button class="ctrl-btn ctrl-hangup" id="btnHangup" title="Colgar">
+            <svg class="icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M10.68 13.31a16 16 0 0 0 3.41 2.6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6A19.79 19.79 0 0 1 2.12 4.18 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11z"/><line x1="23" y1="1" x2="1" y2="23"/></svg>
+          </button>
+        </div>
+        <div class="warn" id="warnError"></div>
+      </div>
+
+      <!-- Pantalla: finalizada -->
+      <div class="screen" id="screenEnded">
+        <h1>Llamada finalizada</h1>
+        <p class="subtitle" id="endedSummary">Duración: 00:00</p>
+        <div class="controls">
+          <button class="ctrl-btn ctrl-start" id="btnAgain">
+            <svg class="icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+            Llamar de nuevo
+          </button>
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+<script>
+(function(){
+  var SpeechRecognitionCtor = window.SpeechRecognition || window.webkitSpeechRecognition;
+  var recognitionSupported = !!SpeechRecognitionCtor && !!window.speechSynthesis;
+
+  var el = {
+    idle: document.getElementById('screenIdle'),
+    ringing: document.getElementById('screenRinging'),
+    connected: document.getElementById('screenConnected'),
+    ended: document.getElementById('screenEnded'),
+    card: document.getElementById('callCard'),
+    avatarWrap: document.getElementById('avatarWrap'),
+    btnStart: document.getElementById('btnStart'),
+    btnAgain: document.getElementById('btnAgain'),
+    btnMic: document.getElementById('btnMic'),
+    btnHangup: document.getElementById('btnHangup'),
+    statusPill: document.getElementById('statusPill'),
+    statusText: document.getElementById('statusText'),
+    timer: document.getElementById('timer'),
+    transcript: document.getElementById('transcript'),
+    warnUnsupported: document.getElementById('warnUnsupported'),
+    warnError: document.getElementById('warnError'),
+    endedSummary: document.getElementById('endedSummary')
+  };
+
+  if (!recognitionSupported) {
+    el.warnUnsupported.classList.add('show');
+    el.btnStart.disabled = true;
+    el.btnStart.style.opacity = '.5';
+    el.btnStart.style.cursor = 'not-allowed';
+  }
+
+  var conversationId = null;
+  var recognition = null;
+  var callActive = false;
+  var expectingFinalResult = false;
+  var callStartTs = null;
+  var timerInterval = null;
+  var spanishVoice = null;
+
+  function showScreen(name){
+    [el.idle, el.ringing, el.connected, el.ended].forEach(function(s){ s.classList.remove('active'); });
+    el[name].classList.add('active');
+    el.card.className = 'call-card state-' + name;
+  }
+
+  function setStatus(mode){
+    el.statusPill.className = 'status-pill ' + mode;
+    var labels = {
+      live: 'Conectado', thinking: 'Confi está pensando…',
+      speaking: 'Confi está hablando…', listening: 'Escuchando…'
+    };
+    el.statusText.textContent = labels[mode] || 'Conectado';
+  }
+
+  function addLine(kind, text){
+    var div = document.createElement('div');
+    div.className = 'line ' + kind;
+    div.textContent = text;
+    el.transcript.appendChild(div);
+    el.transcript.scrollTop = el.transcript.scrollHeight;
+  }
+
+  function fmtTime(totalSeconds){
+    var m = Math.floor(totalSeconds / 60);
+    var s = Math.floor(totalSeconds % 60);
+    return (m < 10 ? '0' : '') + m + ':' + (s < 10 ? '0' : '') + s;
+  }
+
+  function startTimer(){
+    callStartTs = performance.now();
+    timerInterval = setInterval(function(){
+      var elapsed = (performance.now() - callStartTs) / 1000;
+      el.timer.textContent = fmtTime(elapsed);
+    }, 250);
+  }
+
+  function stopTimer(){
+    if (timerInterval) clearInterval(timerInterval);
+    timerInterval = null;
+  }
+
+  function pickSpanishVoice(){
+    var voices = window.speechSynthesis.getVoices() || [];
+    return voices.find(function(v){ return /^es-(PE|419)/i.test(v.lang); })
+        || voices.find(function(v){ return /^es/i.test(v.lang); })
+        || null;
+  }
+  if (window.speechSynthesis) {
+    window.speechSynthesis.onvoiceschanged = function(){ spanishVoice = pickSpanishVoice(); };
+    spanishVoice = pickSpanishVoice();
+  }
+
+  function speak(text){
+    setStatus('speaking');
+    window.speechSynthesis.cancel();
+    var utter = new SpeechSynthesisUtterance(text);
+    utter.lang = 'es-PE';
+    if (spanishVoice) utter.voice = spanishVoice;
+    utter.rate = 1;
+    utter.onend = function(){ if (callActive) startListening(); };
+    utter.onerror = function(){ if (callActive) startListening(); };
+    window.speechSynthesis.speak(utter);
+  }
+
+  function sendToConfi(query, opts){
+    opts = opts || {};
+    if (!opts.silentUser) addLine('user', query);
+    setStatus('thinking');
+    fetch('/api/dify-chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ query: query, conversation_id: conversationId })
+    })
+      .then(function(r){ return r.json().then(function(data){ return { ok: r.ok, data: data }; }); })
+      .then(function(res){
+        if (!res.ok) { showApiError(res.data); return; }
+        conversationId = res.data.conversation_id;
+        addLine('bot', res.data.answer);
+        speak(res.data.answer);
+      })
+      .catch(function(err){ showApiError({ error: String(err) }); });
+  }
+
+  function showApiError(data){
+    el.warnError.textContent = 'No pude conectar con Confi: ' + (data.error || 'error desconocido') +
+      '. Verifica que la página esté desplegada en Vercel (no en file://) y que /api/dify-chat.js esté activo.';
+    el.warnError.classList.add('show');
+    setStatus('live');
+  }
+
+  function startListening(){
+    if (!callActive) return;
+    if (!recognitionSupported) { setStatus('live'); return; }
+    setStatus('listening');
+    expectingFinalResult = false;
+    try { recognition.start(); } catch (e) { /* ya estaba corriendo */ }
+  }
+
+  function initRecognition(){
+    recognition = new SpeechRecognitionCtor();
+    recognition.lang = 'es-PE';
+    recognition.continuous = false;
+    recognition.interimResults = true;
+
+    recognition.onresult = function(event){
+      var lastResult = event.results[event.results.length - 1];
+      if (lastResult.isFinal) {
+        var text = lastResult[0].transcript.trim();
+        expectingFinalResult = true;
+        if (text) sendToConfi(text);
+        else setStatus('live');
+      }
+    };
+    recognition.onerror = function(event){
+      if (event.error === 'no-speech' || event.error === 'aborted') { setStatus('live'); return; }
+      if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
+        el.warnError.textContent = 'Permiso de micrófono denegado. Habilítalo en la configuración del navegador para probar la llamada.';
+        el.warnError.classList.add('show');
+      }
+      setStatus('live');
+    };
+    recognition.onend = function(){
+      if (callActive && !expectingFinalResult) setStatus('live');
+    };
+  }
+
+  function startCall(){
+    if (recognitionSupported) initRecognition();
+    conversationId = null;
+    el.transcript.innerHTML = '';
+    el.warnError.classList.remove('show');
+    showScreen('ringing');
+    setTimeout(function(){
+      showScreen('connected');
+      callActive = true;
+      startTimer();
+      sendToConfi('Hola', { silentUser: true });
+      addLine('system', 'Llamada conectada');
+    }, 1600);
+  }
+
+  function endCall(){
+    callActive = false;
+    stopTimer();
+    if (recognition) { try { recognition.abort(); } catch(e) {} }
+    if (window.speechSynthesis) window.speechSynthesis.cancel();
+    el.endedSummary.textContent = 'Duración: ' + el.timer.textContent;
+    showScreen('ended');
+  }
+
+  el.btnStart.addEventListener('click', startCall);
+  el.btnAgain.addEventListener('click', startCall);
+  el.btnHangup.addEventListener('click', endCall);
+  el.btnMic.addEventListener('click', function(){
+    if (window.speechSynthesis) window.speechSynthesis.cancel();
+    startListening();
+  });
+})();
+</script>
+
+  <!-- ===== Widget de Confi (Dify) ===== -->
+  <script>
+   window.difyChatbotConfig = {
+    token: 'R3f0aOsl8nLQVfHS',
+    baseUrl: 'https://udify.app',
+    inputs: {},
+    systemVariables: {},
+    userVariables: {},
+   }
+  </script>
+  <script
+   src="https://udify.app/embed.min.js"
+   id="R3f0aOsl8nLQVfHS"
+   defer>
+  </script>
+  <style>
+    #dify-chatbot-bubble-button {
+      background: linear-gradient(135deg, #019DF4, #6C3CE9) !important;
+      position: fixed !important;
+      bottom: 20px !important;
+      right: 20px !important;
+      left: auto !important;
+      top: auto !important;
+      z-index: 2147483000 !important;
+    }
+    #dify-chatbot-bubble-window {
+      position: fixed !important;
+      bottom: 88px !important;
+      right: 20px !important;
+      left: auto !important;
+      top: auto !important;
+      max-width: calc(100vw - 40px) !important;
+      max-height: calc(100vh - 200px) !important;
+      z-index: 2147483000 !important;
+    }
+  </style>
+  <!-- ===== Fin widget de Confi ===== -->
+
+</body>
+</html>

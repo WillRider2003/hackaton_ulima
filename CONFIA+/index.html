@@ -1,0 +1,1418 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CONFIA+ | Confi, tu asistente de facturación Movistar</title>
+  <meta name="description"
+    content="Confi te explica tu recibo Movistar en segundos, sin tecnicismos y sin esperas. Hackathon AI Telecom Challenge — Movistar x Universidad de Lima.">
+  <style>
+    :root {
+      --azul: #019DF4;
+      --azul-oscuro: #0B4F8A;
+      --morado: #6C3CE9;
+      --verde: #4FD1A5;
+      --radio: 18px;
+
+      --bg: #FFFFFF;
+      --bg-soft: #F4F7FB;
+      --surface: #FFFFFF;
+      --border: #E7ECF2;
+      --text: #0F1720;
+      --text-2: #4A5568;
+      --text-3: #8492A6;
+      --shadow: 0 20px 45px -22px rgba(15, 23, 32, .20);
+    }
+
+    [data-theme="dark"] {
+      --bg: #0A0F1A;
+      --bg-soft: #0F1626;
+      --surface: #121A2B;
+      --border: #232E42;
+      --text: #EDF1F7;
+      --text-2: #A6B1C4;
+      --text-3: #6E7A8F;
+      --shadow: 0 20px 50px -20px rgba(0, 0, 0, .55);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      color: var(--text);
+      background: var(--bg);
+      line-height: 1.55;
+      transition: background .35s ease, color .35s ease;
+      overflow-x: hidden;
+    }
+
+    a {
+      text-decoration: none;
+      color: inherit;
+    }
+
+    .container {
+      max-width: 1152px;
+      margin: 0 auto;
+      padding: 0 24px;
+    }
+
+    img,
+    svg {
+      display: block;
+    }
+
+    /* ---------- reveal on scroll ---------- */
+    .reveal {
+      opacity: 0;
+      transform: translateY(24px);
+      transition: opacity .7s cubic-bezier(.22, .9, .32, 1), transform .7s cubic-bezier(.22, .9, .32, 1);
+    }
+
+    .reveal.in {
+      opacity: 1;
+      transform: none;
+    }
+
+    .reveal-delay-1 {
+      transition-delay: .08s;
+    }
+
+    .reveal-delay-2 {
+      transition-delay: .16s;
+    }
+
+    .reveal-delay-3 {
+      transition-delay: .24s;
+    }
+
+    /* ---------- icons ---------- */
+    .icon {
+      width: 17px;
+      height: 17px;
+      flex-shrink: 0;
+      stroke-width: 2;
+    }
+
+    .icon-sm {
+      width: 15px;
+      height: 15px;
+    }
+
+    /* ---------- top bar ---------- */
+    .topbar {
+      position: relative;
+      z-index: 101;
+      background: #0A1220;
+      color: #B9C4D6;
+      font-size: 12.5px;
+      padding: 11px 0;
+      letter-spacing: .2px;
+      box-shadow: 0 6px 16px -8px rgba(0, 0, 0, .45);
+    }
+
+    .topbar .container {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .topbar span {
+      opacity: .85;
+    }
+
+    .topbar .pulse {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .pulse-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--verde);
+      box-shadow: 0 0 0 rgba(79, 209, 165, .6);
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0% {
+        box-shadow: 0 0 0 0 rgba(79, 209, 165, .55);
+      }
+
+      70% {
+        box-shadow: 0 0 0 8px rgba(79, 209, 165, 0);
+      }
+
+      100% {
+        box-shadow: 0 0 0 0 rgba(79, 209, 165, 0);
+      }
+    }
+
+    /* ---------- nav ---------- */
+    header {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: color-mix(in srgb, var(--bg) 86%, transparent);
+      backdrop-filter: blur(10px);
+      border-bottom: 1px solid var(--border);
+      transition: background .35s ease, border-color .35s ease;
+    }
+
+    nav {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 20px 0;
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      font-weight: 800;
+      font-size: 21px;
+      letter-spacing: -0.5px;
+    }
+
+    .logo .dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--azul), var(--morado));
+      display: inline-block;
+      animation: dotspin 3.5s linear infinite;
+    }
+
+    @keyframes dotspin {
+      50% {
+        transform: scale(1.25);
+      }
+    }
+
+    .logo span.plus {
+      color: var(--azul);
+    }
+
+    nav ul {
+      list-style: none;
+      display: flex;
+      gap: 26px;
+      align-items: center;
+    }
+
+    nav a.navlink {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text-2);
+      position: relative;
+      padding-bottom: 2px;
+    }
+
+    nav a.navlink::after {
+      content: "";
+      position: absolute;
+      left: 0;
+      bottom: -3px;
+      width: 0;
+      height: 2px;
+      background: linear-gradient(90deg, var(--azul), var(--morado));
+      transition: width .25s ease;
+    }
+
+    nav a.navlink:hover {
+      color: var(--text);
+    }
+
+    nav a.navlink:hover::after {
+      width: 100%;
+    }
+
+    .nav-right {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .theme-toggle {
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      color: var(--text-2);
+      transition: transform .25s ease, background .25s ease, color .25s ease;
+    }
+
+    .theme-toggle:hover {
+      transform: rotate(20deg) scale(1.06);
+      color: var(--azul);
+    }
+
+    .theme-toggle .icon-sun {
+      display: none;
+    }
+
+    [data-theme="dark"] .theme-toggle .icon-moon {
+      display: none;
+    }
+
+    [data-theme="dark"] .theme-toggle .icon-sun {
+      display: block;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 12px 24px;
+      border-radius: 999px;
+      font-weight: 700;
+      font-size: 14px;
+      border: none;
+      cursor: pointer;
+      transition: transform .18s ease, box-shadow .18s ease, filter .18s ease;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .btn:hover {
+      transform: translateY(-2px);
+    }
+
+    .btn:active {
+      transform: translateY(0);
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, var(--azul), var(--morado));
+      background-size: 180% 180%;
+      color: #fff;
+      box-shadow: 0 10px 24px -6px rgba(1, 157, 244, .45);
+      animation: gradientshift 6s ease infinite;
+    }
+
+    @keyframes gradientshift {
+      0% {
+        background-position: 0% 50%;
+      }
+
+      50% {
+        background-position: 100% 50%;
+      }
+
+      100% {
+        background-position: 0% 50%;
+      }
+    }
+
+    .btn-primary:hover {
+      box-shadow: 0 14px 30px -6px rgba(108, 60, 233, .55);
+    }
+
+    .btn-ghost {
+      background: var(--surface);
+      color: var(--text);
+      border: 1.5px solid var(--border);
+    }
+
+    .btn-ghost:hover {
+      border-color: var(--azul);
+      color: var(--azul);
+    }
+
+    .btn-sm {
+      padding: 9px 18px;
+      font-size: 12.5px;
+      gap: 6px;
+    }
+
+    .btn-sm .icon {
+      width: 14px;
+      height: 14px;
+    }
+
+    /* ---------- hero ---------- */
+    .hero {
+      position: relative;
+      padding: 92px 0 76px;
+      overflow: hidden;
+    }
+
+    .blob {
+      position: absolute;
+      border-radius: 50%;
+      filter: blur(70px);
+      opacity: .35;
+      z-index: 0;
+      animation: float 9s ease-in-out infinite;
+    }
+
+    .blob-1 {
+      width: 420px;
+      height: 420px;
+      background: var(--azul);
+      top: -160px;
+      right: -120px;
+    }
+
+    .blob-2 {
+      width: 360px;
+      height: 360px;
+      background: var(--morado);
+      bottom: -140px;
+      left: -100px;
+      animation-delay: -4s;
+    }
+
+    @keyframes float {
+
+      0%,
+      100% {
+        transform: translateY(0) translateX(0);
+      }
+
+      50% {
+        transform: translateY(-26px) translateX(14px);
+      }
+    }
+
+    .hero .row {
+      position: relative;
+      z-index: 1;
+      display: flex;
+      align-items: center;
+      gap: 56px;
+    }
+
+    .hero-copy {
+      flex: 1.05;
+      min-width: 320px;
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: color-mix(in srgb, var(--azul) 12%, transparent);
+      color: var(--azul);
+      font-size: 12.5px;
+      font-weight: 700;
+      padding: 7px 14px;
+      border-radius: 999px;
+      margin-bottom: 20px;
+      border: 1px solid color-mix(in srgb, var(--azul) 25%, transparent);
+    }
+
+    h1 {
+      font-size: 46px;
+      line-height: 1.12;
+      letter-spacing: -1.2px;
+      font-weight: 800;
+      margin-bottom: 18px;
+    }
+
+    h1 .accent {
+      background: linear-gradient(135deg, var(--azul), var(--morado));
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+      background-size: 200% auto;
+      animation: gradientshift 5s ease infinite;
+    }
+
+    .hero-copy p.lead {
+      font-size: 17px;
+      color: var(--text-2);
+      max-width: 520px;
+      margin-bottom: 30px;
+    }
+
+    .hero-actions {
+      display: flex;
+      gap: 14px;
+      flex-wrap: wrap;
+      margin-bottom: 36px;
+    }
+
+    .trust-row {
+      display: flex;
+      gap: 32px;
+      flex-wrap: wrap;
+    }
+
+    .trust-item b {
+      display: block;
+      font-size: 22px;
+      font-weight: 800;
+      color: var(--text);
+    }
+
+    .trust-item span {
+      font-size: 12.5px;
+      color: var(--text-3);
+    }
+
+    .count {
+      display: inline-block;
+    }
+
+    .hero-visual {
+      flex: 1;
+      min-width: 300px;
+      display: flex;
+      justify-content: center;
+    }
+
+    .phone-mock {
+      width: 300px;
+      background: var(--surface);
+      border-radius: 26px;
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+      animation: floaty 5s ease-in-out infinite;
+    }
+
+    @keyframes floaty {
+
+      0%,
+      100% {
+        transform: translateY(0);
+      }
+
+      50% {
+        transform: translateY(-10px);
+      }
+    }
+
+    .phone-mock .chat-head {
+      background: linear-gradient(135deg, var(--azul), var(--morado));
+      color: #fff;
+      padding: 16px 18px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .phone-mock .chat-head .avatar {
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, .25);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+    }
+
+    .phone-mock .chat-head b {
+      font-size: 14.5px;
+    }
+
+    .phone-mock .chat-head small {
+      display: block;
+      font-size: 11.5px;
+      opacity: .85;
+    }
+
+    .phone-mock .chat-body {
+      padding: 16px;
+      background: var(--bg-soft);
+      min-height: 290px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .bubble {
+      max-width: 82%;
+      padding: 10px 13px;
+      border-radius: 14px;
+      font-size: 13px;
+      opacity: 0;
+      transform: translateY(8px);
+      animation: pop .5s ease forwards;
+    }
+
+    .bubble.bot {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      align-self: flex-start;
+      border-bottom-left-radius: 4px;
+      color: var(--text);
+    }
+
+    .bubble.user {
+      background: linear-gradient(135deg, var(--azul), var(--morado));
+      color: #fff;
+      align-self: flex-end;
+      border-bottom-right-radius: 4px;
+    }
+
+    .bubble:nth-child(1) {
+      animation-delay: .3s;
+    }
+
+    .bubble:nth-child(2) {
+      animation-delay: 1.1s;
+    }
+
+    .bubble:nth-child(3) {
+      animation-delay: 1.9s;
+    }
+
+    .bubble:nth-child(4) {
+      animation-delay: 2.9s;
+    }
+
+    .bubble:nth-child(5) {
+      animation-delay: 3.7s;
+    }
+
+    @keyframes pop {
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .typing {
+      display: inline-flex;
+      gap: 3px;
+      padding: 11px 14px;
+    }
+
+    .typing span {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--text-3);
+      animation: blink 1.2s infinite;
+    }
+
+    .typing span:nth-child(2) {
+      animation-delay: .2s;
+    }
+
+    .typing span:nth-child(3) {
+      animation-delay: .4s;
+    }
+
+    @keyframes blink {
+
+      0%,
+      80%,
+      100% {
+        opacity: .25;
+      }
+
+      40% {
+        opacity: 1;
+      }
+    }
+
+    /* ---------- sections ---------- */
+    section {
+      padding: 80px 0;
+    }
+
+    .section-head {
+      text-align: center;
+      max-width: 640px;
+      margin: 0 auto 46px;
+    }
+
+    .section-head .eyebrow {
+      margin-bottom: 14px;
+    }
+
+    .section-head h2 {
+      font-size: 31px;
+      font-weight: 800;
+      letter-spacing: -0.6px;
+      margin-bottom: 10px;
+    }
+
+    .section-head p {
+      color: var(--text-2);
+      font-size: 15.5px;
+    }
+
+    .grid-3 {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 22px;
+    }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radio);
+      padding: 28px 24px;
+      transition: box-shadow .25s ease, transform .25s ease, border-color .25s ease;
+    }
+
+    .card:hover {
+      box-shadow: var(--shadow);
+      transform: translateY(-5px);
+      border-color: color-mix(in srgb, var(--azul) 35%, var(--border));
+    }
+
+    .card .icn {
+      width: 46px;
+      height: 46px;
+      border-radius: 13px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 21px;
+      margin-bottom: 16px;
+      transition: transform .25s ease;
+    }
+
+    .card:hover .icn {
+      transform: scale(1.12) rotate(-6deg);
+    }
+
+    .icn.blue {
+      background: color-mix(in srgb, var(--azul) 15%, transparent);
+      color: var(--azul);
+    }
+
+    .icn.purple {
+      background: color-mix(in srgb, var(--morado) 15%, transparent);
+      color: var(--morado);
+    }
+
+    .icn.green {
+      background: color-mix(in srgb, var(--verde) 20%, transparent);
+      color: #0F9D6B;
+    }
+
+    .card h3 {
+      font-size: 16.5px;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+
+    .card p {
+      font-size: 14px;
+      color: var(--text-2);
+    }
+
+    .how {
+      background: var(--bg-soft);
+    }
+
+    .steps {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 22px;
+      position: relative;
+    }
+
+    .step {
+      background: var(--surface);
+      border-radius: var(--radio);
+      padding: 28px 24px;
+      border: 1px solid var(--border);
+      position: relative;
+      transition: transform .25s ease, box-shadow .25s ease;
+    }
+
+    .step:hover {
+      transform: translateY(-5px);
+      box-shadow: var(--shadow);
+    }
+
+    .step .num {
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--azul), var(--morado));
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      font-size: 14px;
+      margin-bottom: 14px;
+    }
+
+    .step h3 {
+      font-size: 15.5px;
+      font-weight: 700;
+      margin-bottom: 6px;
+    }
+
+    .step p {
+      font-size: 13.5px;
+      color: var(--text-2);
+    }
+
+    /* ---------- simulador ---------- */
+    .sim {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 24px;
+      padding: 34px;
+      box-shadow: var(--shadow);
+    }
+
+    .sim-tabs {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-bottom: 22px;
+    }
+
+    .sim-tab {
+      padding: 9px 16px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: var(--bg-soft);
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--text-2);
+      cursor: pointer;
+      transition: all .2s ease;
+    }
+
+    .sim-tab.active {
+      background: linear-gradient(135deg, var(--azul), var(--morado));
+      color: #fff;
+      border-color: transparent;
+    }
+
+    .sim-tab:hover:not(.active) {
+      border-color: var(--azul);
+      color: var(--azul);
+    }
+
+    .sim-output {
+      background: var(--bg-soft);
+      border-radius: 16px;
+      padding: 22px;
+      min-height: 132px;
+      border: 1px solid var(--border);
+    }
+
+    .sim-output .q {
+      font-size: 13.5px;
+      color: var(--text-3);
+      margin-bottom: 8px;
+      font-weight: 600;
+    }
+
+    .sim-output .a {
+      font-size: 15px;
+      color: var(--text);
+      opacity: 0;
+      animation: pop .45s ease forwards;
+    }
+
+    .sim-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      margin-top: 14px;
+      font-size: 11.5px;
+      font-weight: 700;
+      padding: 5px 11px;
+      border-radius: 999px;
+      background: color-mix(in srgb, var(--verde) 18%, transparent);
+      color: #0F9D6B;
+      transition: background .2s ease, color .2s ease;
+    }
+
+    .sim-tag.derivado {
+      background: color-mix(in srgb, var(--azul) 16%, transparent);
+      color: var(--azul-oscuro);
+    }
+
+    [data-theme="dark"] .sim-tag.derivado {
+      color: #7CB8F0;
+    }
+
+    /* ---------- stack ---------- */
+    .stack-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      justify-content: center;
+    }
+
+    .chip {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 16px;
+      border-radius: 12px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      font-size: 13px;
+      font-weight: 600;
+      transition: transform .2s ease, border-color .2s ease;
+    }
+
+    .chip:hover {
+      transform: translateY(-3px);
+      border-color: var(--azul);
+    }
+
+    .chip .sq {
+      width: 8px;
+      height: 8px;
+      border-radius: 2px;
+      background: linear-gradient(135deg, var(--azul), var(--morado));
+    }
+
+    /* ---------- cta final ---------- */
+    .cta-final {
+      background: linear-gradient(135deg, var(--azul-oscuro), var(--morado));
+      color: #fff;
+      border-radius: 26px;
+      padding: 56px 40px;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .cta-final::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(400px 200px at 20% 0%, rgba(255, 255, 255, .18), transparent);
+    }
+
+    .cta-final h2 {
+      font-size: 29px;
+      font-weight: 800;
+      margin-bottom: 10px;
+      position: relative;
+    }
+
+    .cta-final p {
+      opacity: .92;
+      margin-bottom: 26px;
+      font-size: 15px;
+      position: relative;
+    }
+
+    .cta-final .btn-primary {
+      background: #fff;
+      color: var(--azul-oscuro);
+      box-shadow: none;
+      animation: none;
+      position: relative;
+    }
+
+    .cta-final .btn-primary:hover {
+      box-shadow: 0 14px 30px -8px rgba(0, 0, 0, .35);
+    }
+
+    footer {
+      padding: 36px 0;
+      border-top: 1px solid var(--border);
+      text-align: center;
+    }
+
+    footer p {
+      font-size: 13px;
+      color: var(--text-3);
+    }
+
+    @media (max-width: 860px) {
+      .hero .row {
+        flex-direction: column;
+      }
+
+      h1 {
+        font-size: 33px;
+      }
+
+      .grid-3,
+      .steps {
+        grid-template-columns: 1fr;
+      }
+
+      nav ul {
+        display: none;
+      }
+
+      .blob {
+        display: none;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <div class="topbar">
+    <div class="container">
+      <span>Hackathon AI Telecom Challenge · Movistar x Universidad de Lima</span>
+      <span class="pulse"><span class="pulse-dot"></span>Confi está en línea</span>
+    </div>
+  </div>
+
+  <header>
+    <nav class="container">
+      <a href="#top" class="logo"><span class="dot"></span>CONFIA<span class="plus">+</span></a>
+      <ul>
+        <li><a class="navlink" href="#beneficios">Beneficios</a></li>
+        <li><a class="navlink" href="#como-funciona">Cómo funciona</a></li>
+        <li><a class="navlink" href="#simulador">Pruébalo</a></li>
+        <li><a class="navlink" href="#arquitectura">Arquitectura</a></li>
+        <li><a class="navlink" href="llamada.html">Llamar a Confi</a></li>
+      </ul>
+      <div class="nav-right">
+        <button class="theme-toggle" id="themeToggle" title="Cambiar tema" aria-label="Cambiar tema">
+          <svg class="icon icon-moon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
+            stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+          </svg>
+          <svg class="icon icon-sun" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
+            stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="5" />
+            <line x1="12" y1="1" x2="12" y2="3" />
+            <line x1="12" y1="21" x2="12" y2="23" />
+            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" />
+            <line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
+            <line x1="1" y1="12" x2="3" y2="12" />
+            <line x1="21" y1="12" x2="23" y2="12" />
+            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" />
+            <line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
+          </svg>
+        </button>
+        <button class="btn btn-primary btn-sm" onclick="abrirConfi()">
+          <svg class="icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+            stroke-linecap="round" stroke-linejoin="round">
+            <path
+              d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
+          </svg>
+          Habla con Confi
+        </button>
+      </div>
+    </nav>
+  </header>
+
+  <main id="top">
+    <section class="hero">
+      <div class="blob blob-1"></div>
+      <div class="blob blob-2"></div>
+      <div class="container row">
+        <div class="hero-copy reveal in">
+          <span class="eyebrow">
+            <svg class="icon-sm" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
+              stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z" />
+            </svg>
+            Asistente de facturación con IA
+          </span>
+          <h1>Entiende tu recibo Movistar en <span class="accent">segundos</span>, no en llamadas de 20 minutos</h1>
+          <p class="lead">Confi lee tu recibo real, te explica exactamente por qué cambió tu cobro y solo te conecta con
+            un asesor humano cuando de verdad hace falta. Cero inventos, cero esperas.</p>
+          <div class="hero-actions">
+            <button class="btn btn-primary" onclick="abrirConfi()">
+              <svg class="icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                stroke-linecap="round" stroke-linejoin="round">
+                <path
+                  d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
+              </svg>
+              Habla con Confi ahora
+            </button>
+            <a class="btn btn-ghost" href="#simulador">Ver una demo</a>
+          </div>
+          <div class="trust-row">
+            <div class="trust-item"><b class="count" data-target="0" data-suffix="%">0%</b><span>montos
+                inventados</span></div>
+            <div class="trust-item"><b class="count" data-target="10" data-prefix="&lt;"
+                data-suffix="s">&lt;10s</b><span>tiempo de respuesta</span></div>
+            <div class="trust-item"><b class="count" data-target="100" data-suffix="%">100%</b><span>trazable a tu
+                recibo real</span></div>
+          </div>
+        </div>
+        <div class="hero-visual reveal in reveal-delay-2">
+          <div class="phone-mock">
+            <div class="chat-head">
+              <div class="avatar">C</div>
+              <div>
+                <b>Confi</b>
+                <small>Asistente CONFIA+ · en línea</small>
+              </div>
+            </div>
+            <div class="chat-body">
+              <div class="bubble bot">Hola, para ayudarte ¿me confirmas tu número de cuenta o de línea?</div>
+              <div class="bubble user">759897406</div>
+              <div class="bubble bot">Tu recibo subió por un cobro proporcional de S/ 2.57 por los días que usaste el
+                plan nuevo.</div>
+              <div class="bubble user">¡Ah ya entendí, gracias!</div>
+              <div class="bubble bot">Genial, ¿tienes otra duda sobre tu recibo?</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="beneficios">
+      <div class="container">
+        <div class="section-head reveal">
+          <span class="eyebrow">Por qué CONFIA+</span>
+          <h2>Menos "no entiendo mi recibo", más claridad</h2>
+          <p>Confi está diseñado para reducir las llamadas evitables al call center, sin dejar de ofrecer una salida
+            humana cuando el caso lo requiere.</p>
+        </div>
+        <div class="grid-3">
+          <div class="card reveal">
+            <div class="icn blue"><svg class="icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" />
+                <polyline points="14 2 14 8 20 8" />
+                <line x1="16" y1="13" x2="8" y2="13" />
+                <line x1="16" y1="17" x2="8" y2="17" />
+                <line x1="10" y1="9" x2="8" y2="9" />
+              </svg></div>
+            <h3>Explicación basada en datos reales</h3>
+            <p>Confi solo menciona montos, fechas y causas que existen literalmente en tu recibo. Si no hay evidencia,
+              lo dice honestamente en vez de inventar.</p>
+          </div>
+          <div class="card reveal reveal-delay-1">
+            <div class="icn purple"><svg class="icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="17 1 21 5 17 9" />
+                <path d="M3 11V9a4 4 0 0 1 4-4h14" />
+                <polyline points="7 23 3 19 7 15" />
+                <path d="M21 13v2a4 4 0 0 1-4 4H3" />
+              </svg></div>
+            <h3>Contexto que no se pierde</h3>
+            <p>Tu cuenta y el hilo de la conversación se mantienen de un mensaje a otro, sin que tengas que repetir tu
+              historia cada vez.</p>
+          </div>
+          <div class="card reveal reveal-delay-2">
+            <div class="icn green"><svg class="icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                <circle cx="8.5" cy="7" r="4" />
+                <polyline points="17 11 19 13 23 9" />
+              </svg></div>
+            <h3>Deriva solo cuando hace falta</h3>
+            <p>Un motor de reglas decide si tu caso lo puede resolver Confi o si necesita un asesor humano, nunca a
+              criterio libre del modelo.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="como-funciona" class="how">
+      <div class="container">
+        <div class="section-head reveal">
+          <span class="eyebrow">Cómo funciona</span>
+          <h2>De la duda a la respuesta, en 3 pasos</h2>
+        </div>
+        <div class="steps">
+          <div class="step reveal">
+            <div class="num">1</div>
+            <h3>Cuéntale tu duda</h3>
+            <p>Escríbele a Confi como le escribirías a un amigo: "¿por qué me cobraron distinto este mes?"</p>
+          </div>
+          <div class="step reveal reveal-delay-1">
+            <div class="num">2</div>
+            <h3>Confi revisa tu recibo real</h3>
+            <p>Compara tu ciclo actual contra el anterior y encuentra la causa exacta del cambio: prorrateo, reconexión,
+              fin de descuento, y más.</p>
+          </div>
+          <div class="step reveal reveal-delay-2">
+            <div class="num">3</div>
+            <h3>Te explica o te conecta</h3>
+            <p>Si tu caso se resuelve con una explicación clara, listo. Si necesitas algo más, Confi te conecta con un
+              asesor con todo el contexto ya armado.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="simulador">
+      <div class="container">
+        <div class="section-head reveal">
+          <span class="eyebrow">Pruébalo sin escribir</span>
+          <h2>Así responde Confi a casos reales</h2>
+          <p>Elige un motivo de cobro y mira exactamente el tipo de explicación que Confi genera con datos reales de las
+            pruebas del equipo.</p>
+        </div>
+        <div class="sim reveal">
+          <div class="sim-tabs" id="simTabs">
+            <button class="sim-tab active" data-case="prorrateo">Prorrateo</button>
+            <button class="sim-tab" data-case="reconexion">Reconexión</button>
+            <button class="sim-tab" data-case="descuento">Fin de descuento</button>
+            <button class="sim-tab" data-case="equipo">Equipo financiado</button>
+            <button class="sim-tab" data-case="sincausa">Sin causa identificada</button>
+          </div>
+          <div class="sim-output" id="simOutput">
+            <div class="q">Cliente: "¿por qué me cobraron distinto este mes?"</div>
+            <div class="a" id="simAnswer">Tu recibo subió por un cobro proporcional de S/ 2.57 por los días que usaste
+              el plan nuevo.</div>
+            <span class="sim-tag" id="simTag">
+              <svg class="icon-sm" id="simTagIcon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+                <polyline points="22 4 12 14.01 9 11.01" />
+              </svg>
+              <span id="simTagText">Resuelto sin asesor</span>
+            </span>
+          </div>
+          <a href="llamada.html" class="btn btn-ghost" style="margin-top:22px;">
+            <svg class="icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+              stroke-linecap="round" stroke-linejoin="round">
+              <path
+                d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" />
+            </svg>
+            Prefiero probarlo por voz (simular una llamada)
+          </a>
+        </div>
+      </div>
+    </section>
+
+    <section id="arquitectura" class="how">
+      <div class="container">
+        <div class="section-head reveal">
+          <span class="eyebrow">Por dentro</span>
+          <h2>Arquitectura determinística, no "caja negra"</h2>
+          <p>La decisión de explicar o derivar a un asesor nunca queda a criterio libre del modelo, la calcula un motor
+            de reglas auditable.</p>
+        </div>
+        <div class="stack-row reveal">
+          <span class="chip"><span class="sq"></span>Dify Chatflow</span>
+          <span class="chip"><span class="sq"></span>Motor de reglas en Python</span>
+          <span class="chip"><span class="sq"></span>LLM de redacción (gpt-4o-mini)</span>
+          <span class="chip"><span class="sq"></span>Tool: consultar_recibo</span>
+          <span class="chip"><span class="sq"></span>Tool: consultar_cliente</span>
+          <span class="chip"><span class="sq"></span>Tool: crear_revisión</span>
+          <span class="chip"><span class="sq"></span>Variables de conversación persistentes</span>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <div class="container">
+        <div class="cta-final reveal">
+          <h2>¿Tienes una duda sobre tu recibo ahora mismo?</h2>
+          <p>Pruébalo tú mismo, Confi está listo para responderte.</p>
+          <button class="btn btn-primary" onclick="abrirConfi()">
+            <svg class="icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+              stroke-linecap="round" stroke-linejoin="round">
+              <path
+                d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
+            </svg>
+            Habla con Confi
+          </button>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <p>CONFIA+ · Proyecto del grupo Refactor · 2026</p>
+  </footer>
+
+  <script>
+    // ---------- abrir el bubble de Confi ----------
+    function abrirConfi() {
+      var btn = document.getElementById('dify-chatbot-bubble-button');
+      if (btn) { btn.click(); }
+    }
+
+    // ---------- dark mode ----------
+    (function () {
+      var toggle = document.getElementById('themeToggle');
+      var root = document.documentElement;
+      var saved = null;
+      try { saved = localStorage.getItem('confia-theme'); } catch (e) { }
+      var prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+      var initial = saved || (prefersDark ? 'dark' : 'light');
+      applyTheme(initial);
+
+      toggle.addEventListener('click', function () {
+        var current = root.getAttribute('data-theme') === 'dark' ? 'dark' : 'light';
+        var next = current === 'dark' ? 'light' : 'dark';
+        applyTheme(next);
+        try { localStorage.setItem('confia-theme', next); } catch (e) { }
+      });
+
+      function applyTheme(mode) {
+        if (mode === 'dark') {
+          root.setAttribute('data-theme', 'dark');
+        } else {
+          root.removeAttribute('data-theme');
+        }
+      }
+    })();
+
+    // ---------- scroll reveal ----------
+    (function () {
+      var items = document.querySelectorAll('.reveal:not(.in)');
+      if (!('IntersectionObserver' in window)) {
+        items.forEach(function (el) { el.classList.add('in'); });
+        return;
+      }
+      var obs = new IntersectionObserver(function (entries) {
+        entries.forEach(function (entry) {
+          if (entry.isIntersecting) {
+            entry.target.classList.add('in');
+            obs.unobserve(entry.target);
+          }
+        });
+      }, { threshold: 0.15 });
+      items.forEach(function (el) { obs.observe(el); });
+    })();
+
+    // ---------- animated counters ----------
+    (function () {
+      var counters = document.querySelectorAll('.count');
+      var done = false;
+      function run() {
+        if (done) return;
+        done = true;
+        counters.forEach(function (el) {
+          var target = parseInt(el.getAttribute('data-target'), 10);
+          var prefix = el.getAttribute('data-prefix') || '';
+          var suffix = el.getAttribute('data-suffix') || '';
+          var startTs = null;
+          var duration = 900;
+          function step(ts) {
+            if (!startTs) startTs = ts;
+            var progress = Math.min((ts - startTs) / duration, 1);
+            var value = Math.floor(progress * target);
+            el.innerHTML = prefix + value + suffix;
+            if (progress < 1) requestAnimationFrame(step);
+            else el.innerHTML = prefix + target + suffix;
+          }
+          requestAnimationFrame(step);
+        });
+      }
+      if ('IntersectionObserver' in window) {
+        var obs2 = new IntersectionObserver(function (entries) {
+          entries.forEach(function (entry) { if (entry.isIntersecting) { run(); obs2.disconnect(); } });
+        }, { threshold: 0.4 });
+        var trustRow = document.querySelector('.trust-row');
+        if (trustRow) obs2.observe(trustRow);
+      } else { run(); }
+    })();
+
+    // ---------- simulador interactivo ----------
+    (function () {
+      var ICON_CHECK = '<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>';
+      var ICON_HEADSET = '<path d="M3 18v-6a9 9 0 0 1 18 0v6"/><path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3z"/><path d="M3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z"/>';
+      var casos = {
+        prorrateo: {
+          q: 'Cliente: "¿por qué me cobraron distinto este mes?"',
+          a: 'Tu recibo subió por un cobro proporcional de S/ 2.57 por los días que usaste el plan nuevo.',
+          tag: 'Resuelto sin asesor', derivado: false
+        },
+        reconexion: {
+          q: 'Cliente: "me llegó un cobro que no reconozco"',
+          a: 'Ese cargo corresponde a la reactivación de tu línea después de una suspensión. Aparece detallado en tu recibo como cobro por reconexión.',
+          tag: 'Resuelto sin asesor', derivado: false
+        },
+        descuento: {
+          q: 'Cliente: "mi recibo subió sin razón"',
+          a: 'Tu total no cambió este ciclo, pero es importante que sepas: el descuento de 50% de tu plan terminó el 31 de mayo. Es posible que tu próximo recibo suba.',
+          tag: 'Resuelto sin asesor', derivado: false
+        },
+        equipo: {
+          q: 'Cliente: "¿por qué pago tanto si ya pagué mi celular?"',
+          a: 'Estás pagando la cuota S/ 29.90 de tu equipo financiado, que incluye un descuento de S/ 2.00 en la promoción de dos meses.',
+          tag: 'Resuelto sin asesor', derivado: false
+        },
+        sincausa: {
+          q: 'Cliente: "no entiendo este cargo"',
+          a: 'No tengo evidencia suficiente en tu recibo para explicarte este cargo con certeza. Prefiero no inventar una causa — te voy a conectar con un asesor para que lo revise contigo.',
+          tag: 'Derivado a asesor (necesario)', derivado: true
+        }
+      };
+      var tabs = document.querySelectorAll('.sim-tab');
+      var answerEl = document.getElementById('simAnswer');
+      var qEl = document.querySelector('.sim-output .q');
+      var tagEl = document.getElementById('simTag');
+      var tagIconEl = document.getElementById('simTagIcon');
+      var tagTextEl = document.getElementById('simTagText');
+
+      tabs.forEach(function (tab) {
+        tab.addEventListener('click', function () {
+          tabs.forEach(function (t) { t.classList.remove('active'); });
+          tab.classList.add('active');
+          var data = casos[tab.getAttribute('data-case')];
+          qEl.textContent = data.q;
+          answerEl.style.animation = 'none';
+          void answerEl.offsetWidth;
+          answerEl.textContent = data.a;
+          answerEl.style.animation = 'pop .45s ease forwards';
+          tagTextEl.textContent = data.tag;
+          tagIconEl.innerHTML = data.derivado ? ICON_HEADSET : ICON_CHECK;
+          tagEl.classList.toggle('derivado', data.derivado);
+        });
+      });
+    })();
+  </script>
+
+  <!-- ===== Widget de Confi (Dify) ===== -->
+  <script>
+    window.difyChatbotConfig = {
+      token: 'R3f0aOsl8nLQVfHS',
+      baseUrl: 'https://udify.app',
+      inputs: {},
+      systemVariables: {},
+      userVariables: {},
+    }
+  </script>
+  <script src="https://udify.app/embed.min.js" id="R3f0aOsl8nLQVfHS" defer>
+  </script>
+  <style>
+    #dify-chatbot-bubble-button {
+      background: linear-gradient(135deg, #019DF4, #6C3CE9) !important;
+      position: fixed !important;
+      bottom: 20px !important;
+      right: 20px !important;
+      left: auto !important;
+      top: auto !important;
+      z-index: 2147483000 !important;
+    }
+
+    /* Solo ponemos un techo (max-width/max-height) al panel de Dify, sin
+       forzar un tamaño exacto ni moverlo de lugar en el DOM. Forzar el
+       tamaño o reparentarlo rompe su layout interno (queda en blanco). */
+    #dify-chatbot-bubble-window {
+      position: fixed !important;
+      bottom: 88px !important;
+      right: 20px !important;
+      left: auto !important;
+      top: auto !important;
+      max-width: calc(100vw - 40px) !important;
+      max-height: calc(100vh - 200px) !important;
+      z-index: 2147483000 !important;
+    }
+  </style>
+  <!-- ===== Fin widget de Confi ===== -->
+
+</body>
+
+</html>
